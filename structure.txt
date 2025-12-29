@@ -1,0 +1,29 @@
+geo_intelligence_core/
+│
+├── api/
+│   ├── main.py
+│   └── schemas.py
+│
+├── discovery/                # 🔹 FIXED LLM (Gemini)
+│   ├── company.py
+│   ├── products.py
+│   ├── personas.py
+│   └── topics.py
+│
+├── analysis/                 # 🔹 MULTI-LLM
+│   ├── prompts.py
+│   ├── analyze.py
+│   └── scoring/
+│       ├── brand.py
+│       ├── topic.py
+│       └── persona.py
+│
+├── llm/
+│   ├── llm_factory.py
+│   └── response_utils.py
+│
+├── state/
+│   └── model_registry.py
+│
+├── config.py
+└── run.py
