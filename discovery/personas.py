@@ -1,5 +1,4 @@
 # discovery/personas.py
-
 from typing import List
 from langchain_core.messages import HumanMessage
 from llm.llm_factory import get_discovery_llm
@@ -12,21 +11,21 @@ def generate_personas(company: str, category: str, num: int = 6) -> List[str]:
     """
 
     prompt = f"""
-List {num} professional roles who would analyze or influence decisions
-in the following domain.
+Generate {num} DISTINCT and DOMAIN-SPECIFIC professional roles
+that would analyze, influence, or make strategic decisions
+in the following context:
 
 Company: {company}
 Category: {category}
 
 Rules:
 - Roles only (2–4 words each)
-- No personal names
-- No explanations
-- Business / tech / strategy focused
+- NO generic corporate roles unless highly relevant
+- NO repetition across domains
+- Focus on specialized, realistic industry roles
+- Avoid overused titles like "Product Manager" unless critical
+- No names, no explanations
 - Output ONLY a JSON list
-
-Example:
-["Product Manager", "Market Research Analyst"]
 """
 
     llm = get_discovery_llm()  

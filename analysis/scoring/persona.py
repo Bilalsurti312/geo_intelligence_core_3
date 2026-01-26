@@ -3,12 +3,11 @@ import json
 import re
 from llm.llm_factory import get_llm
 
-
 def score_personas(corpus: str, personas: List[str]) -> Dict[str, int]:
     if not personas:
         return {}
 
-    llm = get_llm("gemini")
+    llm = get_llm("openai")
 
     prompt = f"""
 You are evaluating how visible each persona is in the following analysis.

@@ -27,13 +27,6 @@ Rules:
 - NO brand names inside topics
 - Think: dashboard / report section titles
 - Output ONLY a JSON list
-
-Examples:
-[
-  "5G Adoption in Smartphones",
-  "Foldable Phone Market Trends",
-  "Smartphone Camera Innovations"
-]
 """
 
     llm = get_discovery_llm() 

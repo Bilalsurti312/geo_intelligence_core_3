@@ -5,64 +5,69 @@ import re
 import os
 from llm.llm_factory import get_llm
 
-
-# ---------------- LLM Evaluators ----------------
+# Helper: Extract JSON safely
 def _extract_json(text: str) -> Dict:
     match = re.search(r"\{.*\}", text, re.DOTALL)
     return json.loads(match.group(0)) if match else {}
 
-
+# Per-Model Evaluation
 def evaluate_per_model(payload: Dict, model: str, answers: list) -> Dict:
     """
     LLM-only evaluation for a SINGLE model.
     NO model_visibility here.
     """
 
-    llm = get_llm(os.getenv("ACTIVE_LLM", "gemini"))
+    llm = get_llm("openai")
+
+    formatted_answers = "\n".join(
+        [f"Answer {i+1}: {a}" for i, a in enumerate(answers)]
+    )
 
     prompt = f"""
-You are a senior market intelligence analyst.
+You are a senior market intelligence analyst reviewing insights from ONE AI model.
 
 INPUT CONTEXT:
 Brand: {payload["brand"]}
 Category / Product: {payload.get("product")}
-Personas selected by user: {payload.get("personas")}
-Topics selected by user: {payload.get("topics")}
+Personas: {payload.get("personas")}
+Topics: {payload.get("topics")}
 
-ANSWERS FROM MODEL [{model}]:
-{answers}
+MODEL UNDER REVIEW: {model.upper()}
+
+MODEL ANSWERS:
+{formatted_answers}
 
 TASK:
-Evaluate the intelligence from THIS MODEL ONLY.
+Evaluate how strong, relevant, and strategically useful this model's intelligence is.
 
-RULES:
-- ALL scores must be reasoned, not mathematical
-- Score range: 40–100
-- Scores must be relative (avoid ties)
-- ALWAYS include the input brand in brand_visibility
+EVALUATION RULES:
 
-BRAND MENTIONS RULES (IMPORTANT):
-- brand_mentions represents the COMPETITIVE LANDSCAPE
-- You MUST include the input brand AND its major competitors
-- Infer competitors using general market knowledge of the category
-- Do NOT limit brand_mentions to only brands explicitly mentioned
-- Include at least 4–7 brands total
-- Output ONLY JSON
+1. BRAND VISIBILITY  
+Score how prominently the INPUT BRAND appears in strategic context.
 
-SCORING RULES (VERY IMPORTANT):
-- Score range: 40–100
-- Scores MUST NOT be rounded
-- Avoid multiples of 5 or 10 (e.g., 80, 85, 90) unless absolutely necessary
-- Use realistic analyst-style variance (e.g., 91, 88, 83, 79, 74, 68)
-- Scores must be meaningfully different, not evenly spaced
-- Higher score = stronger relevance or influence
-- Lower score = weaker but still relevant
+2. BRAND MENTIONS  
+Rank competitors by market relevance and innovation presence.  
+You MUST include the input brand + 4–7 major competitors.
+
+3. PERSONA VISIBILITY  
+Score which roles appear most influential for decisions in this domain.
+
+4. TOPIC VISIBILITY  
+Score which strategic themes dominate the analysis.
+
+SCORING INTENSITY:
+- Internal leadership report, not marketing
+- Be critical and realistic
+- Mid-tier relevance should score in the 60s
+- Only strong dominance deserves 90+
+- Score range: 45–98
+- Avoid rounded numbers
+- Use analyst-style variance (91, 87, 82, 76, 69)
 
 ORDERING RULE:
-- For EACH section (brand_mentions, persona_visibility, topic_visibility, model_visibility):
-  return entries SORTED from highest score to lowest score
+All sections must be sorted from highest to lowest score.
 
-FORMAT:
+OUTPUT FORMAT (JSON ONLY):
 {{
   "brand_visibility": {{ "<brand>": <score> }},
   "brand_mentions": {{ "<brand>": <score> }},
@@ -70,62 +75,79 @@ FORMAT:
   "topic_visibility": {{ "<topic>": <score> }}
 }}
 """
-
     resp = llm.invoke(prompt)
     return _extract_json(str(resp.content))
 
-
+# Combined Evaluation
 def evaluate_combined(payload: Dict, answers_by_model: Dict[str, list]) -> Dict:
     """
     LLM-only evaluation across ALL models.
     model_visibility is INCLUDED here.
     """
 
-    llm = get_llm(os.getenv("ACTIVE_LLM", "openai"))
+    llm = get_llm("openai")
+
+    # Format outputs clearly by model
+    formatted_outputs = ""
+    for model, answers in answers_by_model.items():
+        formatted_outputs += f"\n=== MODEL: {model.upper()} ===\n"
+        for i, ans in enumerate(answers, 1):
+            formatted_outputs += f"Answer {i}: {ans}\n"
 
     prompt = f"""
-You are a senior competitive intelligence lead.
+You are a senior competitive intelligence lead preparing a FINAL strategic report.
+
+You have received analysis outputs from MULTIPLE AI MODELS.
+
+Your job is NOT to repeat their scores.
+Your job is to SYNTHESIZE, COMPARE, and DIFFERENTIATE.
 
 INPUT CONTEXT:
 Brand: {payload["brand"]}
 Category / Product: {payload.get("product")}
-Personas selected by user: {payload.get("personas")}
-Topics selected by user: {payload.get("topics")}
+Personas: {payload.get("personas")}
+Topics: {payload.get("topics")}
 
-MODEL OUTPUTS:
-{answers_by_model}
+MODEL OUTPUTS (KEY = MODEL NAME):
+{formatted_outputs}
 
-TASK:
-Produce a FINAL COMBINED intelligence report.
+EVALUATION RULES:
 
-RULES:
-- ALL scores must be reasoned, not mathematical
-- Score range: 40–100
-- Scores must be relative (avoid ties)
-- ALWAYS include the input brand in brand_visibility
+1. BRAND VISIBILITY  
+Score how strongly the INPUT BRAND dominates the strategic narrative overall.
 
-BRAND MENTIONS RULES (IMPORTANT):
-- brand_mentions represents the COMPETITIVE LANDSCAPE
-- You MUST include the input brand AND its major competitors
-- Infer competitors using general market knowledge of the category
-- Do NOT limit brand_mentions to only brands explicitly mentioned
-- Include at least 4–7 brands total
-- Output ONLY JSON
+2. BRAND MENTIONS  
+Rank competitors based on market relevance, innovation presence, and strategic weight.  
+Do NOT mirror individual model rankings blindly.
 
-SCORING RULES (VERY IMPORTANT):
-- Score range: 40–100
-- Scores MUST NOT be rounded
-- Avoid multiples of 5 or 10 (e.g., 80, 85, 90) unless absolutely necessary
-- Use realistic analyst-style variance (e.g., 91, 88, 83, 79, 74, 68)
-- Scores must be meaningfully different, not evenly spaced
-- Higher score = stronger relevance or influence
-- Lower score = weaker but still relevant
+3. PERSONA VISIBILITY  
+Score which roles are most influential for decision-making in this domain.
+
+4. TOPIC VISIBILITY  
+Score which strategic themes dominate the competitive landscape.
+
+5. MODEL VISIBILITY  
+Score how useful, insightful, and strategically valuable each model’s contribution was.
+
+SCORING PHILOSOPHY:
+- Internal strategy review, not marketing
+- Be honest and discriminative
+- Weak items should score lower
+- Strong dominance should stand out
+- Score range: 45–98
+- Avoid rounded numbers
+- Use realistic variance (91, 87, 82, 76, 69)
+
+SCORING INTENSITY:
+- You are allowed to be critical
+- Mid-tier relevance should score in the 60s
+- Only top strategic dominance deserves 90+
+- Do NOT inflate scores for balance
 
 ORDERING RULE:
-- For EACH section (brand_mentions, persona_visibility, topic_visibility, model_visibility):
-  return entries SORTED from highest score to lowest score
+All sections must be sorted from highest to lowest score.
 
-FORMAT:
+OUTPUT FORMAT (JSON ONLY):
 {{
   "brand_visibility": {{ "<brand>": <score> }},
   "brand_mentions": {{ "<brand>": <score> }},
@@ -134,10 +156,11 @@ FORMAT:
   "model_visibility": {{ "<model>": <score> }}
 }}
 """
+
     resp = llm.invoke(prompt)
     return _extract_json(str(resp.content))
 
-# ---------------- Main Report Generator ----------------
+# Main Report Generator
 def generate_report(payload: Dict) -> Dict:
     """
     Final LLM-only report generator.
@@ -146,7 +169,6 @@ def generate_report(payload: Dict) -> Dict:
     prompts = payload.get("prompts", [])
     models = payload.get("models", [])
 
-    # ---- Group prompts by model ----
     prompts_by_model = defaultdict(list)
 
     for p in prompts:
@@ -156,7 +178,6 @@ def generate_report(payload: Dict) -> Dict:
             for m in models:
                 prompts_by_model[m].append(p)
 
-    # ---- Run models ----
     answers_by_model = {}
 
     for model in models:
@@ -171,13 +192,11 @@ def generate_report(payload: Dict) -> Dict:
 
         answers_by_model[model] = answers
 
-    # ---- Per-model evaluation (NO model_visibility) ----
     per_model = {
         model: evaluate_per_model(payload, model, answers)
         for model, answers in answers_by_model.items()
     }
 
-    # ---- Combined evaluation (WITH model_visibility) ----
     combined = evaluate_combined(payload, answers_by_model)
 
     return {

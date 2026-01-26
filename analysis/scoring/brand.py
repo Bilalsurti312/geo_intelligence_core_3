@@ -5,8 +5,7 @@ from llm.llm_factory import get_llm
 import os
 
 def score_brands(company: str, category: str, corpus: str) -> Dict:
-    llm = get_llm(os.getenv("ACTIVE_LLM", "gemini"))
-
+    llm = get_llm(os.getenv("ACTIVE_LLM", "openai"))
 
     prompt = f"""
 You are an expert market analyst.

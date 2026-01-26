@@ -7,7 +7,6 @@ Your task is to reason deeply, write clearly, and avoid generic filler.
 Always structure insights, quantify when possible, and avoid hallucinating data.
 """
 
-
 def run_analysis(payload: dict) -> dict:
     """
     Uses already generated data.

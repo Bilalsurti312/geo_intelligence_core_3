@@ -8,7 +8,7 @@ def score_topics(topics: List[str], corpus: str) -> Dict[str, int]:
     if not corpus.strip():
         return {}
 
-    llm = get_llm(os.getenv("ACTIVE_LLM", "gemini"))
+    llm = get_llm(os.getenv("ACTIVE_LLM", "openai"))
 
     prompt = f"""
 You are scoring how relevant each topic is

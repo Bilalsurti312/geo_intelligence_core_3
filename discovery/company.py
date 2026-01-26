@@ -1,5 +1,4 @@
 # discovery/company.py
-
 import requests
 import socket
 from urllib.parse import urlparse
@@ -37,7 +36,6 @@ def _safe_fetch(url: str):
         return None
 
     return None
-
 
 def verify_company_from_url(url: str) -> dict:
     # URL validation 

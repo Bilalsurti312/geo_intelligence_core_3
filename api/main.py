@@ -8,9 +8,11 @@ from analysis.analyze import run_analysis
 from analysis.report import generate_report
 from analysis.prompts import generate_prompts
 from llm.llm_factory import get_llm
+from pydantic import BaseModel
 
 app = FastAPI(title="GEO Intelligence Core")
 
+# Base Routes
 class CompanyVerifyRequest(BaseModel):
     url: str
 
@@ -34,7 +36,6 @@ def personas(req: PersonaRequest):
 def topics(req: TopicRequest):
     return {"topics": generate_topics(req.company, req.product, req.persona)}
 
-#  FIXED: PROMPTS SHOULD RETURN ONLY PROMPTS 
 @app.post("/prompts")
 def prompts(req: AnalysisRequest):
     results = []
@@ -63,8 +64,68 @@ def prompts(req: AnalysisRequest):
         "results": results
     }
 
-# REPORT: It now receives personas explicitly
-
 @app.post("/report")
 def report(payload: ReportRequest):
     return generate_report(payload.dict())
+
+# Content Generation Module
+class ContentGenerationRequest(BaseModel):
+    topic: str
+
+class ContentGenerationResponse(BaseModel):
+    topic: str
+    content_type: str
+    content: str
+
+@app.post("/content-generation", response_model=ContentGenerationResponse)
+def content_generation(payload: ContentGenerationRequest):
+    """
+    Generates blog-style content to improve visibility for a given topic.
+    """
+    #Primary module: OpenAI:
+    llm = get_llm("openai")
+
+    prompt = f"""
+You are a senior industry content strategist.
+
+Your task is to generate a high-quality blog article
+focused on improving visibility and authority for the topic below.
+
+TOPIC:
+{payload.topic}
+
+CONTENT OBJECTIVE:
+- Strengthen topical authority
+- Educate readers
+- Improve strategic visibility of the topic
+- No promotional tone
+- No sales language
+
+CONTENT RULES:
+- Blog-style content
+- Professional, authoritative tone
+- Clear structure with headings
+- 100-200 words
+- Insight-driven, not generic
+- Avoid fluff and repetition
+- No brand pushing unless contextually necessary
+
+OUTPUT:
+Return ONLY the blog content as plain text.
+"""
+
+    resp = llm.invoke(prompt)
+ 
+    raw_content = resp.content.strip()
+
+    clean_content = (
+        raw_content
+        .replace("**", "")
+        .replace("\n\n", "\n")
+        .replace("\n", " ")
+)
+    return {
+       "topic": payload.topic,
+       "content_type": "blog",
+       "content": clean_content
+}

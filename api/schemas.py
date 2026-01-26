@@ -43,8 +43,6 @@ class AnalysisRequest(BaseModel):
         description="Prompts per model"
     )
 
-
-
 class ReportRequest(BaseModel):
     brand: str
     product: str
