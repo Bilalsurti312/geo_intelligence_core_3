@@ -6,7 +6,6 @@ from discovery.products import extract_products
 from discovery.personas import generate_personas
 from discovery.topics import generate_topics
 from discovery.company import verify_company_from_url
-from analysis.analyze import run_analysis
 from analysis.report import generate_report
 from analysis.prompts import generate_prompts
 from llm.llm_factory import get_llm
@@ -20,17 +19,14 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:8080",
         "http://192.168.0.102:8080",
-        "*"  # DEV ONLY — remove later in production
+        "*"
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# BASE MODELS
-class CompanyVerifyRequest(BaseModel):
-    url: str
-
+# EXTRA MODELS
 class ContentGenerationRequest(BaseModel):
     topic: str
 
@@ -71,6 +67,7 @@ def prompts(req: AnalysisRequest):
         llm = get_llm(model)
 
         prompts = generate_prompts(
+            brand=req.brand,
             product=req.product,
             persona=req.persona,
             topic=req.topic,
@@ -95,7 +92,7 @@ def prompts(req: AnalysisRequest):
 def report(payload: ReportRequest):
     return generate_report(payload.dict())
 
-# CONTENT GENERATION MODULE
+# CONTENT GENERATION
 @app.post("/content-generation", response_model=ContentGenerationResponse)
 def content_generation(payload: ContentGenerationRequest):
     """
@@ -107,7 +104,7 @@ def content_generation(payload: ContentGenerationRequest):
     prompt = f"""
 You are a senior industry content strategist.
 
-Your task is to generate a high-quality blog article
+Generate a high-quality blog article
 focused on improving visibility and authority for the topic below.
 
 TOPIC:
@@ -116,26 +113,21 @@ TOPIC:
 CONTENT OBJECTIVE:
 - Strengthen topical authority
 - Educate readers
-- Improve strategic visibility of the topic
+- Improve strategic visibility
 - No promotional tone
-- No sales language
 
 CONTENT RULES:
-- Blog-style content
-- Professional, authoritative tone
-- Clear structure with headings
-- 800–1200 words
-- Insight-driven, not generic
-- Avoid fluff and repetition
-- No brand pushing unless contextually necessary
+- Blog style
+- Professional tone
+- Clear headings
+- Insight-driven
+- No fluff
 
-OUTPUT:
-Return ONLY the blog content as plain text.
+Return ONLY plain text content.
 """
 
     resp = llm.invoke(prompt)
 
-    # Clean markdown & newlines
     raw_content = resp.content.strip()
     clean_content = (
         raw_content

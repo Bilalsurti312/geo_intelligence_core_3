@@ -6,10 +6,17 @@ from langchain_core.messages import HumanMessage
 SYSTEM_PROMPTS = """
 You generate strategic analytical prompts — not answers.
 Each prompt must be a single powerful question.
-Avoid brand names, avoid filler, avoid generic fluff.
+Avoid filler, avoid generic fluff.
 """
 
-def generate_prompts(product: str, persona: str, topic: str, num: int, llm) -> List[str]:
+def generate_prompts(
+    brand: str,
+    product: str,
+    persona: str,
+    topic: str,
+    num: int,
+    llm
+) -> List[str]:
 
     if isinstance(persona, list):
         persona = persona[0]
@@ -17,6 +24,7 @@ def generate_prompts(product: str, persona: str, topic: str, num: int, llm) -> L
     prompt = f"""
 {SYSTEM_PROMPTS}
 
+Brand: {brand}
 Product: {product}
 Topic: {topic}
 Persona: {persona}

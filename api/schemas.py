@@ -1,7 +1,7 @@
 from pydantic import BaseModel, HttpUrl, Field
 from typing import List, Optional
 
-#  COMPANY VERIFICATION
+# COMPANY VERIFICATION
 class CompanyVerifyRequest(BaseModel):
     url: HttpUrl
 
@@ -14,7 +14,7 @@ class CompanyVerifyResponse(BaseModel):
 class CompanyBase(BaseModel):
     company: str = Field(..., description="Verified company name")
 
-#  DISCOVERY
+# DISCOVERY
 class ProductRequest(CompanyBase):
     pass
 
@@ -25,15 +25,16 @@ class TopicRequest(CompanyBase):
     product: str
     persona: str
 
-#  ANALYSIS (MULTI-LLM)
+# PROMPT GENERATION
 class AnalysisRequest(BaseModel):
+    brand: str
     product: str
     persona: str
     topic: str
 
     models: List[str] = Field(
         ...,
-        description="LLMs to use, e.g. ['openai', 'gemini']"
+        description="LLMs to use, e.g. ['openai', 'perplexity']"
     )
 
     num_prompts: int = Field(
@@ -43,10 +44,11 @@ class AnalysisRequest(BaseModel):
         description="Prompts per model"
     )
 
+# REPORT
 class ReportRequest(BaseModel):
     brand: str
     product: str
     personas: List[str]
     topics: List[str]
     prompts: List[str]
-    models: List[str]   
+    models: List[str]
