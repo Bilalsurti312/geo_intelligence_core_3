@@ -3,7 +3,7 @@ from typing import List, Optional
 
 # COMPANY VERIFICATION
 class CompanyVerifyRequest(BaseModel):
-    url: HttpUrl
+    url: str
 
 class CompanyVerifyResponse(BaseModel):
     valid: bool
