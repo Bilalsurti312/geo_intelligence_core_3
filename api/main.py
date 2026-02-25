@@ -110,7 +110,11 @@ def personas(req: PersonaRequest):
 @app.post("/topics")
 def topics(req: TopicRequest):
     try:
-        result = generate_topics(req.company, req.product, req.persona)
+        result = generate_topics(
+            req.company,
+            req.product,
+            req.personas
+        )
 
         return success_response(
             message="Topics generated successfully",
@@ -130,14 +134,18 @@ def prompts(req: AnalysisRequest):
         results = []
         total = 0
 
+        personas_text = ", ".join(req.personas)
+        topics_text = ", ".join(req.topics)
+
         for model in req.models:
+
             llm = get_llm(model)
 
             generated = generate_prompts(
                 brand=req.brand,
                 product=req.product,
-                persona=req.persona,
-                topic=req.topic,
+                persona=personas_text,
+                topic=topics_text,
                 num=req.num_prompts,
                 llm=llm,
             )

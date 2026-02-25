@@ -21,16 +21,18 @@ class ProductRequest(CompanyBase):
 class PersonaRequest(CompanyBase):
     product: str
 
+# DISCOVERY
 class TopicRequest(CompanyBase):
     product: str
-    persona: str
+    personas: List[str]
+
 
 # PROMPT GENERATION
 class AnalysisRequest(BaseModel):
     brand: str
     product: str
-    persona: str
-    topic: str
+    personas: List[str]
+    topics: List[str]
 
     models: List[str] = Field(
         ...,

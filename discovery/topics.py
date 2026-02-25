@@ -5,30 +5,27 @@ from llm.llm_factory import get_discovery_llm
 import json
 import re
 
-def generate_topics(company: str, product: str, persona: str, num: int = 6) -> List[Dict]:
+def generate_topics(company: str, product: str, personas: List[str], num: int = 6) -> List[Dict]:
     """
-    Generates structured high-level strategic topics
-    with name + description.
+    Generates structured strategic topics based on company, product, and multiple personas.
     """
+    
+    personas_text = ", ".join(personas)
 
     prompt = f"""
 You are a strategic market intelligence analyst.
 
-Generate exactly {num} HIGH-LEVEL dashboard topic themes
-for the following context:
+Generate exactly {num} HIGH-LEVEL dashboard topic themes.
 
 Company: {company}
 Product: {product}
-Persona: {persona}
+Personas: {personas_text}
 
 CRITICAL RULES:
-- Topics MUST logically reflect company + product + persona together
-- If persona changes, topics must shift accordingly
-- No generic corporate themes
+- Topics MUST reflect company + product + personas together
+- Different personas must influence topic selection
+- No generic topics
 - 3–8 words max
-- No questions
-- No analysis verbs
-- No brand names
 - Each topic must include:
     - name
     - description (1–2 strategic sentences)
@@ -37,13 +34,14 @@ CRITICAL RULES:
 Example:
 [
   {{
-    "name": "Smartphone Market Penetration",
-    "description": "Analyzes regional adoption rates and consumer switching behavior for mobile devices."
+    "name": "Mobile UX Optimization",
+    "description": "Improves usability and retention through interface innovation and behavioral insights."
   }}
 ]
 """
 
     llm = get_discovery_llm()
+
     resp = llm.invoke([HumanMessage(content=prompt)])
 
     raw = resp.content
