@@ -163,7 +163,7 @@ OUTPUT FORMAT (JSON ONLY):
 # Main Report Generator
 def generate_report(payload: Dict) -> Dict:
     """
-    Final LLM-only report generator.
+    Final LLM-only report generator, resilient to individual model failures.
     """
 
     prompts = payload.get("prompts", [])
@@ -171,6 +171,7 @@ def generate_report(payload: Dict) -> Dict:
 
     prompts_by_model = defaultdict(list)
 
+    # Sort prompts by model
     for p in prompts:
         if isinstance(p, dict):
             prompts_by_model[p["model"]].append(p["prompt"])
@@ -179,27 +180,46 @@ def generate_report(payload: Dict) -> Dict:
                 prompts_by_model[m].append(p)
 
     answers_by_model = {}
+    model_errors = {}  # Track which models failed and why
 
+    # Loop through each requested model safely
     for model in models:
-        llm = get_llm(model)
-        answers = []
+        try:
+            # 1. Try to initialize the model
+            llm = get_llm(model)
+            answers = []
 
-        for prompt in prompts_by_model.get(model, []):
-            resp = llm.invoke(prompt)
-            answers.append(
-                resp.content if hasattr(resp, "content") else str(resp)
-            )
+            # 2. Try to get answers for all prompts assigned to this model
+            for prompt in prompts_by_model.get(model, []):
+                resp = llm.invoke(prompt)
+                answers.append(
+                    resp.content if hasattr(resp, "content") else str(resp)
+                )
 
-        answers_by_model[model] = answers
+            # 3. Only save to answers_by_model if the whole process succeeded
+            answers_by_model[model] = answers
 
+        except Exception as e:
+            # Catch initialization or generation errors for THIS model only
+            print(f"Error generating report data for model '{model}': {e}")
+            model_errors[model] = str(e)
+            continue  # Move on to the next model in the list
+
+    # Fallback: If ALL models failed, raise an exception so the caller endpoint knows
+    if not answers_by_model and model_errors:
+        raise RuntimeError(f"Report generation failed for all requested models. Errors: {model_errors}")
+
+    # Evaluate the models that successfully generated answers
     per_model = {
         model: evaluate_per_model(payload, model, answers)
         for model, answers in answers_by_model.items()
     }
 
+    # Generate the combined evaluation using only the successful models
     combined = evaluate_combined(payload, answers_by_model)
 
     return {
         "per_model": per_model,
-        "combined": combined
+        "combined": combined,
+        "errors": model_errors  # Return the errors so the frontend/user knows what failed
     }

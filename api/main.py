@@ -132,42 +132,65 @@ def topics(req: TopicRequest):
 def prompts(req: AnalysisRequest):
     try:
         results = []
+        model_errors = [] # Track errors for specific models
         total = 0
 
         personas_text = ", ".join(req.personas)
         topics_text = ", ".join(req.topics)
 
         for model in req.models:
+            try:
+                # 1. Try to initialize the LLM and generate prompts
+                llm = get_llm(model)
 
-            llm = get_llm(model)
+                generated = generate_prompts(
+                    brand=req.brand,
+                    product=req.product,
+                    persona=personas_text,
+                    topic=topics_text,
+                    num=req.num_prompts,
+                    llm=llm,
+                )
 
-            generated = generate_prompts(
-                brand=req.brand,
-                product=req.product,
-                persona=personas_text,
-                topic=topics_text,
-                num=req.num_prompts,
-                llm=llm,
+                # 2. If successful, append to results
+                results.append({
+                    "model": model,
+                    "prompts": generated
+                })
+
+                total += len(generated)
+
+            except Exception as model_error:
+                # 3. If THIS model fails, log it and keep the loop going
+                print(f"Error with model '{model}': {model_error}")
+                model_errors.append({
+                    "model": model, 
+                    "error": str(model_error)
+                })
+                continue # Skip to the next model in req.models
+
+        # 4. If ALL models failed, return an error response
+        if not results and model_errors:
+            return error_response(
+                message="Failed to generate prompts for all requested models",
+                errors=[e["error"] for e in model_errors]
             )
 
-            results.append({
-                "model": model,
-                "prompts": generated
-            })
-
-            total += len(generated)
-
+        # 5. Return success (even if partial)
+        # Optional: You can pass model_errors into the data dict so the frontend knows what failed
         return success_response(
-            message="Prompts generated successfully",
+            message="Prompts generated successfully" if not model_errors else "Prompts generated with some model failures",
             data={
                 "total_prompts": total,
-                "results": results
+                "results": results,
+                "failed_models": model_errors # Lets the client know Perplexity failed while OpenAI succeeded
             }
         )
 
     except Exception as e:
+        # This now only catches major outer errors (e.g., bad request data)
         return error_response(
-            message="Failed to generate prompts",
+            message="An unexpected error occurred",
             errors=[str(e)]
         )
 
